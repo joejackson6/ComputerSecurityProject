@@ -44,11 +44,32 @@ def launch_gui():
 
 	def update_cipher(*args):
 		text_output.delete("1.0", tk.END)
+		selected=cipher_var.get()
+  
+		if selected=="RSA":
+			key_entry.pack_forget()
+			rsa_frame.pack(pady=5)
+			root.update_idletasks()
+		else:
+			rsa_frame.pack_forget()
+			key_entry.pack()
+			root.update_idletasks()
 
 	def encrypt():
 		cipher = CIPHERS[cipher_var.get()]
 		message = text_input.get("1.0", tk.END).strip()
-		key = key_entry.get()
+		selected=cipher_var.get()
+		
+		if selected=="RSA":
+			try:
+				e=int(entry_e.get())
+				n=int(entry_n.get())
+				key=f"{e},{n}"
+			except ValueError:
+				messagebox.showerror("Input Error","Please enter valid integers for e and n.")
+				return
+		else:
+			key=key_entry.get()
 		try:
 			encrypted = cipher.encrypt(message, key)
 			text_output.delete("1.0", tk.END)
@@ -59,7 +80,18 @@ def launch_gui():
 	def decrypt():
 		cipher = CIPHERS[cipher_var.get()]
 		message = text_input.get("1.0", tk.END).strip()
-		key = key_entry.get()
+		selected=cipher_var.get()
+		if selected=="RSA":
+			try:
+				d=int(entry_d.get())
+				n=int(entry_n.get())
+				key=f"{d},{n}"
+			except ValueError:
+				messagebox.showerror("Input Error", "Please enter valid integer for d and n.")
+				return
+		else:
+			key = key_entry.get()
+
 		try:
 			decrypted = cipher.decrypt(message, key)
 			text_output.delete("1.0", tk.END)
@@ -88,8 +120,27 @@ def launch_gui():
 
 	# Key Input
 	tk.Label(root, text="Enter Key:", font=label_font).pack(pady=(10, 0))
-	key_entry = tk.Entry(root, font=default_font)
+	key_container = tk.Frame(root)
+	key_container.pack()
+
+	key_entry = tk.Entry(key_container, font=default_font)
 	key_entry.pack()
+ 
+	rsa_frame = tk.Frame(key_container)
+	rsa_frame.pack(after=key_entry, pady=5)
+
+ 
+	tk.Label(rsa_frame, text="Public Exponent (e):", font=label_font).grid(row=0, column=0, sticky="e")
+	entry_e = tk.Entry(rsa_frame, font=default_font, width=10)
+	entry_e.grid(row=0, column=1, padx=5)
+
+	tk.Label(rsa_frame, text="Private Exponent (d):", font=label_font).grid(row=1, column=0, sticky="e")
+	entry_d = tk.Entry(rsa_frame, font=default_font, width=10)
+	entry_d.grid(row=1, column=1, padx=5)
+
+	tk.Label(rsa_frame, text="Modulus (n):", font=label_font).grid(row=2, column=0, sticky="e")
+	entry_n = tk.Entry(rsa_frame, font=default_font, width=10)
+	entry_n.grid(row=2, column=1, padx=5)
 
 	# Load File Button
 	tk.Button(root, text="Load File", command=load_file, **button_config).pack(pady=5)
@@ -109,5 +160,5 @@ def launch_gui():
 	text_output = tk.Text(root, height=10, width=80, font=default_font)
 	text_output.pack(pady=5)
 
+	update_cipher()
 	root.mainloop()
-
