@@ -3,9 +3,18 @@ class RSA:
         print("RSA initialized")
 
     def encrypt(self, plaintext, key_str):
-        print("RSA encrypt called with:", plaintext, key_str)
-        return f"[Encrypted: {plaintext}]"
+        try:
+            e, n = map(int, key_str.strip().split(','))
+            cipher = [pow(ord(char), e, n) for char in plaintext]
+            return ' '.join(map(str, cipher))  # Return as space-separated string
+        except Exception as ex:
+            return f"[RSA Encrypt Error] {ex}"
 
     def decrypt(self, ciphertext, key_str):
-        print("RSA decrypt called with:", ciphertext, key_str)
-        return f"[Decrypted: {ciphertext}]"
+        try:
+            d, n = map(int, key_str.strip().split(','))
+            cipher_nums = list(map(int, ciphertext.strip().split()))
+            plain = [chr(pow(char, d, n)) for char in cipher_nums]
+            return ''.join(plain)
+        except Exception as ex:
+            return f"[RSA Decrypt Error] {ex}"
