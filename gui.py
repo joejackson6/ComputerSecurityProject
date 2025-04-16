@@ -3,7 +3,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from vigenere import VigenereCipher
-from triple_des import TripleDES
+from triple_des import TripleDES, generate_random_key
 from aes import AES
 from rsa import RSA
 from file_utils import read_file, save_file
@@ -48,10 +48,17 @@ def launch_gui():
   
 		if selected=="RSA":
 			key_entry.pack_forget()
+			triple_des_frame.pack_forget()
 			rsa_frame.pack(pady=5)
+			root.update_idletasks()
+		elif selected=="Triple DES":
+			key_entry.pack_forget()
+			rsa_frame.pack_forget()
+			triple_des_frame.pack(pady=5)
 			root.update_idletasks()
 		else:
 			rsa_frame.pack_forget()
+			triple_des_frame.pack_forget()
 			key_entry.pack()
 			root.update_idletasks()
 
@@ -68,10 +75,31 @@ def launch_gui():
 			except ValueError:
 				messagebox.showerror("Input Error","Please enter valid integers for e and n.")
 				return
+		elif selected=="Triple DES":
+			try:
+				key1 = entry_key1.get().strip()
+				key2 = entry_key2.get().strip()
+				key3 = entry_key3.get().strip()
+				key = f"{key1},{key2},{key3}"
+			except ValueError:
+				messagebox.showerror("Input Error", "Invalid Triple DES keys format.")
+				return
 		else:
 			key=key_entry.get()
 		try:
-			encrypted = cipher.encrypt(message, key)
+			result = cipher.encrypt(message, key)
+			
+			if isinstance(result, tuple) and len(result) > 0:
+				encrypted = result[0]
+				if len(result) > 1:
+					execution_time = result[1]
+					execution_time_ms = execution_time * 1000  
+					text_output.delete("1.0", tk.END)
+					text_output.insert(tk.END, f"{encrypted}\n\n[Execution time: {execution_time_ms:.2f} ms]")
+					return
+			else:
+				encrypted = result
+			
 			text_output.delete("1.0", tk.END)
 			text_output.insert(tk.END, encrypted)
 		except Exception as e:
@@ -89,11 +117,32 @@ def launch_gui():
 			except ValueError:
 				messagebox.showerror("Input Error", "Please enter valid integer for d and n.")
 				return
+		elif selected=="Triple DES":
+			try:
+				key1 = entry_key1.get().strip()
+				key2 = entry_key2.get().strip()
+				key3 = entry_key3.get().strip()
+				key = f"{key1},{key2},{key3}"
+			except ValueError:
+				messagebox.showerror("Input Error", "Invalid Triple DES keys format.")
+				return
 		else:
 			key = key_entry.get()
 
 		try:
-			decrypted = cipher.decrypt(message, key)
+			result = cipher.decrypt(message, key)
+			
+			if isinstance(result, tuple) and len(result) > 0:
+				decrypted = result[0]
+				if len(result) > 1:
+					execution_time = result[1]
+					execution_time_ms = execution_time * 1000 
+					text_output.delete("1.0", tk.END)
+					text_output.insert(tk.END, f"{decrypted}\n\n[Execution time: {execution_time_ms:.2f} ms]")
+					return
+			else:
+				decrypted = result
+			
 			text_output.delete("1.0", tk.END)
 			text_output.insert(tk.END, decrypted)
 		except Exception as e:
@@ -141,6 +190,32 @@ def launch_gui():
 	tk.Label(rsa_frame, text="Modulus (n):", font=label_font).grid(row=2, column=0, sticky="e")
 	entry_n = tk.Entry(rsa_frame, font=default_font, width=10)
 	entry_n.grid(row=2, column=1, padx=5)
+
+	# triple DES keys
+	triple_des_frame = tk.Frame(key_container)
+	triple_des_frame.pack(after=key_entry, pady=5)
+
+	tk.Label(triple_des_frame, text="Key 1 (64 bits):", font=label_font).grid(row=0, column=0, sticky="e")
+	entry_key1 = tk.Entry(triple_des_frame, font=default_font, width=15)
+	entry_key1.grid(row=0, column=1, padx=5)
+
+	tk.Label(triple_des_frame, text="Key 2 (64 bits):", font=label_font).grid(row=1, column=0, sticky="e")
+	entry_key2 = tk.Entry(triple_des_frame, font=default_font, width=15)
+	entry_key2.grid(row=1, column=1, padx=5)
+
+	tk.Label(triple_des_frame, text="Key 3 (64 bits):", font=label_font).grid(row=2, column=0, sticky="e")
+	entry_key3 = tk.Entry(triple_des_frame, font=default_font, width=15)
+	entry_key3.grid(row=2, column=1, padx=5)
+
+	def generate_3des_keys():
+		entry_key1.delete(0, tk.END)
+		entry_key1.insert(0, generate_random_key())
+		entry_key2.delete(0, tk.END)
+		entry_key2.insert(0, generate_random_key())
+		entry_key3.delete(0, tk.END)
+		entry_key3.insert(0, generate_random_key())
+
+	tk.Button(triple_des_frame, text="Generate Keys", command=generate_3des_keys, **button_config).grid(row=3, columnspan=2, pady=5)
 
 	# Load File Button
 	tk.Button(root, text="Load File", command=load_file, **button_config).pack(pady=5)

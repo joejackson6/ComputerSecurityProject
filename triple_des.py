@@ -116,7 +116,7 @@ pc2 = [14, 17, 11, 24, 1, 5,
        44, 49, 39, 56, 34, 53,
        46, 42, 50, 36, 29, 32]
 
-# Left shifts for key schedule
+# left shifts for key schedule
 key_shifts = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1]
 
 
@@ -338,18 +338,32 @@ class TripleDES:
     def __init__(self):
         self.name = "Triple DES"
     
-    def encrypt(self, plaintext, key1, key2, key3):
+    def encrypt(self, plaintext, key):
         """
         Encrypt text using Triple DES.
         
         Args:
             plaintext: The text to encrypt
-            key1, key2, key3: The three 64-bit keys in binary string format
+            key: The key in the format "key1,key2,key3" where each key is a 64-bit binary string
         
         Returns:
-            The encrypted text in hexadecimal format
+            The encrypted text in hexadecimal format and execution time
         """
         start_time = __import__('time').time()
+        #if combined key
+        try:
+            keys = key.split(',')
+            if len(keys) != 3:
+                raise ValueError("Triple DES requires 3 keys separated by commas")
+                
+            key1, key2, key3 = keys
+            
+            # Validate each key
+            for k in [key1, key2, key3]:
+                if not validate_binary_key(k):
+                    raise ValueError("Each key must be 64 bits of binary (0s and 1s)")
+        except Exception as e:
+            raise ValueError(f"Invalid key format: {str(e)}")
         
         binary = text_to_binary(plaintext)
         
@@ -369,18 +383,33 @@ class TripleDES:
         
         return result_hex, execution_time
     
-    def decrypt(self, ciphertext_hex, key1, key2, key3):
+    def decrypt(self, ciphertext_hex, key):
         """
         Decrypt hexadecimal ciphertext using Triple DES.
         
         Args:
             ciphertext_hex: The hexadecimal ciphertext
-            key1, key2, key3: The three 64-bit keys in binary string format
+            key: The key in the format "key1,key2,key3" where each key is a 64-bit binary string
         
         Returns:
-            The decrypted text
+            The decrypted text and execution time
         """
         start_time = __import__('time').time()
+        
+        # if combined key
+        try:
+            keys = key.split(',')
+            if len(keys) != 3:
+                raise ValueError("Triple DES requires 3 keys separated by commas")
+                
+            key1, key2, key3 = keys
+            
+
+            for k in [key1, key2, key3]:
+                if not validate_binary_key(k):
+                    raise ValueError("Each key must be 64 bits of binary (0s and 1s)")
+        except Exception as e:
+            raise ValueError(f"Invalid key format: {str(e)}")
         
         binary = hex_to_binary(ciphertext_hex)
         
