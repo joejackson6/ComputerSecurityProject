@@ -68,6 +68,11 @@ def launch_gui():
 			except ValueError:
 				messagebox.showerror("Input Error","Please enter valid integers for e and n.")
 				return
+
+			valid, msg = cipher.validate_keys(key, mode='encrypt')
+			if not valid:
+				messagebox.showerror("RSA Key Error", msg)
+				return
 		else:
 			key=key_entry.get()
 		try:
@@ -88,6 +93,10 @@ def launch_gui():
 				key=f"{d},{n}"
 			except ValueError:
 				messagebox.showerror("Input Error", "Please enter valid integer for d and n.")
+				return
+			valid, msg = cipher.validate_keys(key, mode='decrypt', public_e=int(entry_e.get()))
+			if not valid:
+				messagebox.showerror("RSA Key Error", msg)
 				return
 		else:
 			key = key_entry.get()
