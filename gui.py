@@ -75,6 +75,11 @@ def launch_gui():
 			except ValueError:
 				messagebox.showerror("Input Error","Please enter valid integers for e and n.")
 				return
+			# RSA key validation
+			valid, msg = cipher.validate_keys(key, mode='encrypt')
+			if not valid:
+				messagebox.showerror("RSA Key Error", msg)
+				return
 		elif selected=="Triple DES":
 			try:
 				key1 = entry_key1.get().strip()
@@ -116,6 +121,11 @@ def launch_gui():
 				key=f"{d},{n}"
 			except ValueError:
 				messagebox.showerror("Input Error", "Please enter valid integer for d and n.")
+				return
+			# RSA key validation
+			valid, msg = cipher.validate_keys(key, mode='decrypt', public_e=int(entry_e.get()))
+			if not valid:
+				messagebox.showerror("RSA Key Error", msg)
 				return
 		elif selected=="Triple DES":
 			try:

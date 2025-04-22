@@ -1,8 +1,154 @@
-class AES:
-    def encrypt(self, plaintext, key):
-        print("AES encrypt called with:", plaintext, key)
-        return f"[Encrypted: {plaintext}]"
+# AES S-box
+sbox = [
+	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+	0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+	0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+	0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+	0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+	0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+	0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+	0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+	0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+	0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+	0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+	0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+	0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+	0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+	0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+]
 
-    def decrypt(self, ciphertext_hex, key):
-        print("AES decrypt called with:", ciphertext_hex, key)
-        return f"[Decrypted: {ciphertext_hex}]"
+inv_sbox = [0] * 256
+for i in range(256):
+	inv_sbox[sbox[i]] = i
+
+
+# Helper functions
+def xtime(a):
+	return ((a << 1) ^ 0x1B) & 0xFF if a & 0x80 else a << 1
+
+def mix_single_column(a):
+	t = a[0] ^ a[1] ^ a[2] ^ a[3]
+	u = a[0]
+	a[0] ^= t ^ xtime(a[0] ^ a[1])
+	a[1] ^= t ^ xtime(a[1] ^ a[2])
+	a[2] ^= t ^ xtime(a[2] ^ a[3])
+	a[3] ^= t ^ xtime(a[3] ^ u)
+	return a
+
+def inv_mix_single_column(a):
+	u = xtime(xtime(a[0] ^ a[2]))
+	v = xtime(xtime(a[1] ^ a[3]))
+	a[0] ^= u
+	a[1] ^= v
+	a[2] ^= u
+	a[3] ^= v
+	return mix_single_column(a)
+
+def sub_bytes(state): return [sbox[b] for b in state]
+
+def inv_sub_bytes(state): return [inv_sbox[b] for b in state]
+
+def shift_rows(state):
+	return [
+		state[0], state[5], state[10], state[15],
+		state[4], state[9], state[14], state[3],
+		state[8], state[13], state[2], state[7],
+		state[12], state[1], state[6], state[11],
+	]
+
+def inv_shift_rows(state):
+	return [
+		state[0], state[13], state[10], state[7],
+		state[4], state[1], state[14], state[11],
+		state[8], state[5], state[2], state[15],
+		state[12], state[9], state[6], state[3],
+	]
+
+def mix_columns(state):
+	columns = [state[i::4] for i in range(4)]
+	mixed = []
+	for col in columns:
+		mixed.extend(mix_single_column(col))
+	return mixed
+
+def inv_mix_columns(state):
+	columns = [state[i::4] for i in range(4)]
+	mixed = []
+	for col in columns:
+		mixed.extend(inv_mix_single_column(col))
+	return mixed
+
+def add_round_key(state, round_key): return [b ^ k for b, k in zip(state, round_key)]
+
+def key_expansion(key):
+	Rcon = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
+	expanded = list(key)
+	for i in range(4, 4 * (10 + 1)):
+		t = expanded[4 * (i - 1):4 * i]
+		if i % 4 == 0:
+			t = t[1:] + t[:1]
+			t = [sbox[b] for b in t]
+			t[0] ^= Rcon[i // 4]
+		for j in range(4):
+			t[j] ^= expanded[4 * (i - 4) + j]
+		expanded.extend(t)
+	return [expanded[i:i + 16] for i in range(0, len(expanded), 16)]
+
+
+
+
+# Main Logic
+class AES:
+	def __init__(self):
+		self.name = "AES"
+
+	def pad(self, data):
+		pad_len = 16 - len(data) % 16
+		return data + bytes([pad_len] * pad_len)
+
+	def unpad(self, data):
+		pad_len = data[-1]
+		return data[:-pad_len]
+
+	def encrypt_block(self, block, ks):
+		state = list(block)
+		state = add_round_key(state, ks[0])
+		for r in range(1, 10):
+			state = sub_bytes(state)
+			state = shift_rows(state)
+			state = mix_columns(state)
+			state = add_round_key(state, ks[r])
+		state = sub_bytes(state)
+		state = shift_rows(state)
+		state = add_round_key(state, ks[10])
+		return bytes(state)
+
+	def decrypt_block(self, block, ks):
+		state = list(block)
+		state = add_round_key(state, ks[10])
+		for r in range(9, 0, -1):
+			state = inv_shift_rows(state)
+			state = inv_sub_bytes(state)
+			state = add_round_key(state, ks[r])
+			state = inv_mix_columns(state)
+		state = inv_shift_rows(state)
+		state = inv_sub_bytes(state)
+		state = add_round_key(state, ks[0])
+		return bytes(state)
+
+	def encrypt(self, plaintext, key_str):
+		key = key_str.encode()[:16].ljust(16, b'\x00')
+		ks = key_expansion(key)
+		plaintext = self.pad(plaintext.encode())
+		blocks = [plaintext[i:i+16] for i in range(0, len(plaintext), 16)]
+		cipher = b''.join(self.encrypt_block(b, ks) for b in blocks)
+		return cipher.hex()
+
+	def decrypt(self, hex_ciphertext, key_str):
+		key = key_str.encode()[:16].ljust(16, b'\x00')
+		ks = key_expansion(key)
+		cipher = bytes.fromhex(hex_ciphertext)
+		blocks = [cipher[i:i+16] for i in range(0, len(cipher), 16)]
+		plain = b''.join(self.decrypt_block(b, ks) for b in blocks)
+		return self.unpad(plain).decode()
