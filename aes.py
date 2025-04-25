@@ -1,4 +1,3 @@
-# AES S-box
 sbox = [
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -22,8 +21,6 @@ inv_sbox = [0] * 256
 for i in range(256):
 	inv_sbox[sbox[i]] = i
 
-
-# Helper functions
 def xtime(a):
 	return ((a << 1) ^ 0x1B) & 0xFF if a & 0x80 else a << 1
 
@@ -46,7 +43,6 @@ def inv_mix_single_column(a):
 	return mix_single_column(a)
 
 def sub_bytes(state): return [sbox[b] for b in state]
-
 def inv_sub_bytes(state): return [inv_sbox[b] for b in state]
 
 def shift_rows(state):
@@ -67,16 +63,16 @@ def inv_shift_rows(state):
 
 def mix_columns(state):
 	columns = [state[i::4] for i in range(4)]
-	mixed = []
-	for col in columns:
-		mixed.extend(mix_single_column(col))
+	mixed = [0] * 16
+	for i, col in enumerate(columns):
+		mixed[i::4] = mix_single_column(col)
 	return mixed
 
 def inv_mix_columns(state):
 	columns = [state[i::4] for i in range(4)]
-	mixed = []
-	for col in columns:
-		mixed.extend(inv_mix_single_column(col))
+	mixed = [0] * 16
+	for i, col in enumerate(columns):
+		mixed[i::4] = inv_mix_single_column(col)
 	return mixed
 
 def add_round_key(state, round_key): return [b ^ k for b, k in zip(state, round_key)]
@@ -95,10 +91,6 @@ def key_expansion(key):
 		expanded.extend(t)
 	return [expanded[i:i + 16] for i in range(0, len(expanded), 16)]
 
-
-
-
-# Main Logic
 class AES:
 	def __init__(self):
 		self.name = "AES"
@@ -140,7 +132,9 @@ class AES:
 	def encrypt(self, plaintext, key_str):
 		key = key_str.encode()[:16].ljust(16, b'\x00')
 		ks = key_expansion(key)
-		plaintext = self.pad(plaintext.encode())
+		if isinstance(plaintext, str):
+			plaintext = plaintext.encode()
+		plaintext = self.pad(plaintext)
 		blocks = [plaintext[i:i+16] for i in range(0, len(plaintext), 16)]
 		cipher = b''.join(self.encrypt_block(b, ks) for b in blocks)
 		return cipher.hex()
@@ -148,7 +142,22 @@ class AES:
 	def decrypt(self, hex_ciphertext, key_str):
 		key = key_str.encode()[:16].ljust(16, b'\x00')
 		ks = key_expansion(key)
-		cipher = bytes.fromhex(hex_ciphertext)
+		if isinstance(hex_ciphertext, bytes):
+			hex_ciphertext = hex_ciphertext.decode()
+		try:
+			cipher = bytes.fromhex(hex_ciphertext)
+		except Exception:
+			raise ValueError("Ciphertext is not valid hexadecimal.")
+		if len(cipher) % 16 != 0:
+			raise ValueError("Ciphertext length must be a multiple of 16.")
 		blocks = [cipher[i:i+16] for i in range(0, len(cipher), 16)]
-		plain = b''.join(self.decrypt_block(b, ks) for b in blocks)
-		return self.unpad(plain).decode()
+		decrypted = b''.join(self.decrypt_block(b, ks) for b in blocks)
+		try:
+			unpadded = self.unpad(decrypted)
+		except Exception:
+			raise ValueError("Padding error. Wrong key or corrupted ciphertext.")
+		try:
+			return unpadded.decode()
+		except UnicodeDecodeError:
+			raise ValueError("Decrypted data is not valid UTF-8. Wrong key?")
+

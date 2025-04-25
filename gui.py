@@ -1,5 +1,3 @@
-# gui.py
-
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from vigenere import VigenereCipher
@@ -7,6 +5,7 @@ from triple_des import TripleDES
 from aes import AES
 from rsa import RSA
 from file_utils import read_file, save_file
+import random, string
 
 CIPHERS = {
 	"Vigenere": VigenereCipher(),
@@ -44,69 +43,114 @@ def launch_gui():
 
 	def update_cipher(*args):
 		text_output.delete("1.0", tk.END)
-		selected=cipher_var.get()
-  
-		if selected=="RSA":
+		selected = cipher_var.get()
+		if selected == "RSA":
 			key_entry.pack_forget()
 			rsa_frame.pack(pady=5)
-			root.update_idletasks()
 		else:
 			rsa_frame.pack_forget()
 			key_entry.pack()
-			root.update_idletasks()
+
+	def generate_key():
+		selected = cipher_var.get()
+		if selected == "Vigenere":
+			key = ''.join(random.choices(string.ascii_uppercase, k=8))
+			key_entry.delete(0, tk.END)
+			key_entry.insert(0, key)
+		elif selected == "AES":
+			key = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
+			key_entry.delete(0, tk.END)
+			key_entry.insert(0, key)
+		elif selected == "Triple DES":
+			k1 = ''.join(random.choices('01', k=64))
+			k2 = ''.join(random.choices('01', k=64))
+			k3 = ''.join(random.choices('01', k=64))
+			key_entry.delete(0, tk.END)
+			key_entry.insert(0, f"{k1},{k2},{k3}")
+		elif selected == "RSA":
+			rsa = CIPHERS['RSA']
+			pub, priv = None, None
+			for _ in range(5):
+				p = rsa.generate_prime()
+				q = rsa.generate_prime()
+				if p != q:
+					n = p * q
+					phi = (p - 1) * (q - 1)
+					e = 65537
+					if gcd(e, phi) == 1:
+						d = rsa.modinv(e, phi)
+						pub = (e, n)
+						priv = (d, n)
+						break
+			if pub and priv:
+				e, n = pub
+				d, _ = priv
+				entry_e.delete(0, tk.END)
+				entry_e.insert(0, str(e))
+				entry_d.delete(0, tk.END)
+				entry_d.insert(0, str(d))
+				entry_n.delete(0, tk.END)
+				entry_n.insert(0, str(n))
 
 	def encrypt():
 		cipher = CIPHERS[cipher_var.get()]
 		message = text_input.get("1.0", tk.END).strip()
-		selected=cipher_var.get()
-		
-		if selected=="RSA":
-			try:
-				e=int(entry_e.get())
-				n=int(entry_n.get())
-				key=f"{e},{n}"
-			except ValueError:
-				messagebox.showerror("Input Error","Please enter valid integers for e and n.")
-				return
+		selected = cipher_var.get()
 
-			valid, msg = cipher.validate_keys(key, mode='encrypt')
-			if not valid:
-				messagebox.showerror("RSA Key Error", msg)
-				return
-		else:
-			key=key_entry.get()
+		if selected == "Vigenere" and not key_entry.get().isalpha():
+			messagebox.showerror("Key Error", "Vigenere key must be alphabetic only.")
+			return
+
 		try:
-			encrypted = cipher.encrypt(message, key)
-			text_output.delete("1.0", tk.END)
-			text_output.insert(tk.END, encrypted)
+			if selected == "RSA":
+				e = int(entry_e.get())
+				n = int(entry_n.get())
+				key = f"{e},{n}"
+				valid, msg = cipher.validate_keys(key, mode='encrypt')
+				if not valid:
+					messagebox.showerror("RSA Key Error", msg)
+					return
+				encrypted = cipher.encrypt(message, key)
+			elif selected == "Triple DES":
+				k1, k2, k3 = [k.strip() for k in key_entry.get().split(",")]
+				encrypted = cipher.encrypt(message, k1, k2, k3)
+			else:
+				key = key_entry.get()
+				encrypted = cipher.encrypt(message, key)
 		except Exception as e:
 			messagebox.showerror("Encryption Error", str(e))
+			return
+
+		text_output.delete("1.0", tk.END)
+		text_output.insert(tk.END, encrypted)
 
 	def decrypt():
 		cipher = CIPHERS[cipher_var.get()]
 		message = text_input.get("1.0", tk.END).strip()
-		selected=cipher_var.get()
-		if selected=="RSA":
-			try:
-				d=int(entry_d.get())
-				n=int(entry_n.get())
-				key=f"{d},{n}"
-			except ValueError:
-				messagebox.showerror("Input Error", "Please enter valid integer for d and n.")
-				return
-			valid, msg = cipher.validate_keys(key, mode='decrypt', public_e=int(entry_e.get()))
-			if not valid:
-				messagebox.showerror("RSA Key Error", msg)
-				return
-		else:
-			key = key_entry.get()
+		selected = cipher_var.get()
 
 		try:
-			decrypted = cipher.decrypt(message, key)
-			text_output.delete("1.0", tk.END)
-			text_output.insert(tk.END, decrypted)
+			if selected == "RSA":
+				d = int(entry_d.get())
+				n = int(entry_n.get())
+				key = f"{d},{n}"
+				valid, msg = cipher.validate_keys(key, mode='decrypt', public_e=int(entry_e.get()))
+				if not valid:
+					messagebox.showerror("RSA Key Error", msg)
+					return
+				decrypted = cipher.decrypt(message, key)
+			elif selected == "Triple DES":
+				k1, k2, k3 = [k.strip() for k in key_entry.get().split(",")]
+				decrypted = cipher.decrypt(message, k1, k2, k3)
+			else:
+				key = key_entry.get()
+				decrypted = cipher.decrypt(message, key)
 		except Exception as e:
 			messagebox.showerror("Decryption Error", str(e))
+			return
+
+		text_output.delete("1.0", tk.END)
+		text_output.insert(tk.END, decrypted)
 
 	def load_file():
 		path = filedialog.askopenfilename()
@@ -121,53 +165,41 @@ def launch_gui():
 		if path:
 			save_file(path, content)
 
-	# Cipher Selection
 	tk.Label(root, text="Select Cipher:", font=label_font).pack(pady=(10, 0))
 	option_menu = tk.OptionMenu(root, cipher_var, *CIPHERS.keys(), command=update_cipher)
 	option_menu.config(**option_menu_config)
 	option_menu.pack()
 
-	# Key Input
+	tk.Button(root, text="Generate Key", command=generate_key, **button_config).pack(pady=5)
 	tk.Label(root, text="Enter Key:", font=label_font).pack(pady=(10, 0))
 	key_container = tk.Frame(root)
 	key_container.pack()
 
-	key_entry = tk.Entry(key_container, font=default_font)
+	key_entry = tk.Entry(key_container, font=default_font, width=80)
 	key_entry.pack()
- 
-	rsa_frame = tk.Frame(key_container)
-	rsa_frame.pack(after=key_entry, pady=5)
 
- 
+	rsa_frame = tk.Frame(key_container)
 	tk.Label(rsa_frame, text="Public Exponent (e):", font=label_font).grid(row=0, column=0, sticky="e")
 	entry_e = tk.Entry(rsa_frame, font=default_font, width=10)
 	entry_e.grid(row=0, column=1, padx=5)
-
 	tk.Label(rsa_frame, text="Private Exponent (d):", font=label_font).grid(row=1, column=0, sticky="e")
 	entry_d = tk.Entry(rsa_frame, font=default_font, width=10)
 	entry_d.grid(row=1, column=1, padx=5)
-
 	tk.Label(rsa_frame, text="Modulus (n):", font=label_font).grid(row=2, column=0, sticky="e")
 	entry_n = tk.Entry(rsa_frame, font=default_font, width=10)
 	entry_n.grid(row=2, column=1, padx=5)
 
-	# Load File Button
 	tk.Button(root, text="Load File", command=load_file, **button_config).pack(pady=5)
-
-	# Message Input
 	tk.Label(root, text="Message Input:", font=label_font).pack(pady=(10, 0))
 	text_input = tk.Text(root, height=10, width=80, font=default_font)
 	text_input.pack(pady=5)
-
-	# Encrypt / Decrypt / Save Buttons
 	tk.Button(root, text="Encrypt", command=encrypt, **button_config).pack(pady=5)
 	tk.Button(root, text="Decrypt", command=decrypt, **button_config).pack(pady=5)
 	tk.Button(root, text="Save Output", command=save_output, **button_config).pack(pady=5)
-
-	# Output Text Box
 	tk.Label(root, text="Output:", font=label_font).pack(pady=(10, 0))
 	text_output = tk.Text(root, height=10, width=80, font=default_font)
 	text_output.pack(pady=5)
 
 	update_cipher()
 	root.mainloop()
+
